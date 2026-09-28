@@ -1,5 +1,8 @@
 //! HTTP client utilities
 
+#[cfg(feature = "http3")]
+pub mod conn;
+
 /// Legacy implementations of `connect` module and `Client`
 #[cfg(feature = "client-legacy")]
 pub mod legacy;

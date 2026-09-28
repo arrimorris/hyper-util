@@ -123,4 +123,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo rustdoc --features full -- --cfg docsrs -D rustdoc::broken_intra_doc_links
+      # `http3` is an opt-in outside `full`; include it so its docs and links
+      # are checked too.
+      - run: cargo rustdoc --features full,http3 -- --cfg docsrs -D rustdoc::broken_intra_doc_links
+
+  http3-slow:
+    name: HTTP/3 long blackout
+    # Five minutes of wall clock, so not on every push to a pull request — but
+    # it is the test that proves a client survives a long outage, so it runs on
+    # every merge rather than never. Not a `ci-pass` dependency, since it does
+    # not run on pull requests at all.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --features http3,client,server,tokio --test http3 -- --ignored

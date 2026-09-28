@@ -57,10 +57,17 @@
 //!   [#322](https://github.com/hyperium/hyper-util/pull/322) and
 //!   [#323](https://github.com/hyperium/hyper-util/pull/323) for more
 //!   information.
+//! * `http3`: Enable HTTP/3 over any QUIC implementation: [`rt::quic`] for
+//!   the transport, and `server::conn::http3` and `client::conn::http3` for
+//!   connections (with `server` or `client` respectively). This feature is
+//!   **experimental** and is **not** included in `full`; its API may change in
+//!   a minor release while the design settles.
 
 #[cfg(feature = "client")]
 pub mod client;
 mod common;
+#[cfg(all(feature = "http3", any(feature = "client", feature = "server")))]
+pub mod http3;
 pub mod rt;
 #[cfg(feature = "server")]
 pub mod server;

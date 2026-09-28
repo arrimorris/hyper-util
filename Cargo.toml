@@ -14,7 +14,7 @@ edition = "2024"
 rust-version = "1.85"
 
 [package.metadata.docs.rs]
-features = ["full"]
+features = ["full", "http3"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
@@ -22,9 +22,24 @@ base64 = { version = "0.23", optional = true }
 bytes = "1.7.1"
 futures-channel = { version = "0.3", optional = true }
 futures-util = { version = "0.3.16", default-features = false, optional = true }
+# The embedder feature is what exposes h3's poll-based accept loop, which is
+# what lets `http3` drive a connection without re-creating a non-cancel-safe
+# future on every poll.
+#
+# Cargo reads `0.0.8` as `>=0.0.8, <0.0.9`, so every h3 bump edits this line.
+# The next one should also delete `suppress_further_grease` in
+# `src/http3/server.rs`, a workaround for h3's public `create_resolver` not
+# clearing the GREASE flag. h3 fixed that in #362, merged after 0.0.8; any
+# release containing it makes the workaround dead code. Confirm with
+# `grease_is_sent_once_per_connection`, which fails if the workaround goes on
+# an h3 that still needs it.
+h3 = { version = "0.0.8", optional = true, features = [
+    "i-implement-a-third-party-backend-and-opt-into-breaking-changes",
+] }
 http = "1.0"
 http-body = "1.0.0"
 httparse = { version = "1", optional = true }
+httpdate = { version = "1.0", optional = true }
 hyper = "1.9.0"
 ipnet = { version = "2.9", optional = true }
 libc = { version = "0.2", optional = true }
@@ -47,6 +62,12 @@ tower-test = "0.4"
 pretty_env_logger = "0.5"
 tracing-core = "0.1.29"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "registry", "std"] }
+
+# For the `http3` tests and examples: a real QUIC stack to run them over.
+quinn = { version = "0.11.11", default-features = false, features = ["runtime-tokio", "rustls", "ring"] }
+rustls = { version = "0.23.5", default-features = false, features = ["logging", "ring", "std"] }
+rcgen = "0.13.2"
+tokio-util = "0.7.10"
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dev-dependencies]
 pnet_datalink = "0.35.0"
@@ -99,6 +120,10 @@ tracing = ["dep:tracing"]
 # Temporary compatibility opt-in, deliberately excluded from `full`.
 rt-tracing-exec-force = ["tokio", "tracing"]
 
+# HTTP/3 over any QUIC implementation. Experimental, and deliberately excluded
+# from `full`: see the `rt::quic` module documentation.
+http3 = ["dep:h3", "dep:httpdate", "dep:tokio", "tokio/sync", "dep:tracing"]
+
 # internal features used in CI
 __internal_happy_eyeballs_tests = []
 
@@ -113,3 +138,15 @@ required-features = ["server", "http1", "tokio"]
 [[example]]
 name = "server_graceful"
 required-features = ["tokio", "server-graceful", "server-auto"]
+
+[[example]]
+name = "http3_server"
+required-features = ["http3", "server", "tokio"]
+
+[[example]]
+name = "http3_client"
+required-features = ["http3", "client", "tokio"]
+
+[[test]]
+name = "http3"
+required-features = ["http3", "client", "server", "tokio"]
